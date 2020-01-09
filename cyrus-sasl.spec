@@ -8,7 +8,7 @@
 Summary: The Cyrus SASL library
 Name: cyrus-sasl
 Version: 2.1.23
-Release: 13%{?dist}
+Release: 13%{?dist}.1
 License: BSD
 Group: System Environment/Libraries
 # Source0 originally comes from ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/;
@@ -40,6 +40,8 @@ Patch36: cyrus-sasl-2.1.23-race.patch
 Patch37: cyrus-sasl-2.1.23-relro.patch
 Patch38: cyrus-sasl-2.1.23-aliasing.patch
 Patch39: cyrus-sasl-2.1.23-ntlm.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=825863
+Patch40: cyrus-sasl-2.1.23-release-server_creds.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, automake, libtool, gdbm-devel, groff
@@ -161,6 +163,7 @@ chmod -x include/*.h
 %patch37 -p1 -b .relro
 %patch38 -p1 -b .aliasing
 %patch39 -p1 -b .ntlm
+%patch40 -p1 -b .release-server_creds
 
 # FIXME - we remove these files directly so that we can avoid using the -f
 # flag, which has a nasty habit of overwriting files like COPYING.
@@ -403,6 +406,10 @@ exit 0
 %{_sbindir}/sasl2-shared-mechlist
 
 %changelog
+* Tue Nov 20 2012 Petr Lautrbach <plautrba@redhat.com> - 2.1.23-13.el6_3.1
+- release the GSSAPI server credential handle immediately after the
+  GSSAPI security context is established (#825863)
+
 * Wed Aug 17 2011 Jan F. Chadima <jchadima@redhat.com> - 2.1.23-13
 - saslauth now uses nonfixed uid anymore (#730242)
 
