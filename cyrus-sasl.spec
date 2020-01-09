@@ -1,5 +1,5 @@
 %define username	saslauth
-%define hint		Saslauthd user
+%define hint		"Saslauthd user"
 %define homedir		/run/saslauthd
 
 %define _plugindir2 %{_libdir}/sasl2
@@ -10,7 +10,7 @@
 Summary: The Cyrus SASL library
 Name: cyrus-sasl
 Version: 2.1.26
-Release: 23%{?dist}
+Release: 17%{?dist}
 License: BSD with advertising
 Group: System Environment/Libraries
 # Source0 originally comes from ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/;
@@ -22,6 +22,7 @@ Source7: sasl-mechlist.c
 Source8: sasl-checkpass.c
 Source9: saslauthd.sysconfig
 Source10: make-no-dlcompatorsrp-tarball.sh
+Source11: saslauthd.tmpfiles
 URL: http://asg.web.cmu.edu/sasl/sasl-library.html
 Requires: %{name}-lib%{?_isa} = %{version}-%{release}
 Patch11: cyrus-sasl-2.1.25-no_rpath.patch
@@ -50,24 +51,6 @@ Patch49: cyrus-sasl-2.1.26-md5global.patch
 Patch50: cyrus-sasl-2.1.26-sql.patch
 # Treat SCRAM-SHA-1/DIGEST-MD5 as more secure than PLAIN (#970718)
 Patch51: cyrus-sasl-2.1.26-prefer-SCRAM-SHA-1-over-PLAIN.patch
-# Revert updated GSSAPI flags as in RFC 4752 to restore backward compatibility (#1154566)
-Patch52: cyrus-sasl-2.1.26-revert-gssapi-flags.patch
-# Document ability to run saslauthd unprivileged (#1188065)
-Patch53: cyrus-sasl-2.1.26-saslauthd-user.patch
-# Support non-confidentiality/non-integrity requests from AIX SASL GSSAPI implementation (#1174322)
-Patch54: cyrus-sasl-2.1.26-gssapi-non-encrypt.patch
-# Update client library to be thread safe (#1147659)
-Patch55: cyrus-sasl-2.1.26-make-client-thread-sage.patch
-# Parsing short prefix matches the whole mechanism name (#1089267)
-Patch56: cyrus-sasl-2.1.26-handle-single-character-mechanisms.patch
-# Fix confusing message when config file has typo (#1022479)
-Patch57: cyrus-sasl-2.1.26-error-message-when-config-has-typo.patch
-# GSSAPI: Use per-connection mutex where possible (#1263017)
-Patch58: cyrus-sasl-2.1.26-gssapi-use-per-connection-mutex.patch
-# GSS-SPNEGO compatible with Windows clients (#1421663)
-Patch59: cyrus-sasl-2.1.26-gss-spnego.patch
-# Allow cyrus sasl to get the ssf from gssapi (#1431586)
-Patch60: cyrus-sasl-2.1.26-gss-ssf.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, automake, libtool, gdbm-devel, groff
@@ -81,7 +64,6 @@ Requires(post): chkconfig, /sbin/service systemd-units
 Requires(pre): /usr/sbin/useradd /usr/sbin/groupadd systemd-units
 Requires(postun): /usr/sbin/userdel /usr/sbin/groupdel systemd-units
 Requires: /sbin/nologin
-Requires: systemd >= 219
 Provides: user(%username)
 Provides: group(%username)
 
@@ -211,15 +193,6 @@ chmod -x include/*.h
 %patch49 -p1 -b .md5global.h
 %patch50 -p1 -b .sql
 %patch51 -p1 -b .sha1vsplain
-%patch52 -p1 -b .revert
-%patch53 -p1 -b .man-unprivileged
-%patch54 -p1 -b .gssapi_non_encrypt
-%patch55 -p1 -b .threads
-%patch56 -p1 -b .prefix
-%patch57 -p1 -b .typo
-%patch58 -p1 -b .mutex
-%patch59 -p1 -b .spnego
-%patch60 -p1 -b .ssf
 
 
 %build
@@ -327,11 +300,16 @@ install -m755 -d $RPM_BUILD_ROOT%{_mandir}/man8/
 install -m644 -p saslauthd/saslauthd.mdoc $RPM_BUILD_ROOT%{_mandir}/man8/saslauthd.8
 install -m644 -p saslauthd/testsaslauthd.8 $RPM_BUILD_ROOT%{_mandir}/man8/testsaslauthd.8
 
+# Create the saslauthd listening directory.
+install -m755 -d $RPM_BUILD_ROOT/run/saslauthd
+
 # Install the init script for saslauthd and the init script's config file.
 install -m755 -d $RPM_BUILD_ROOT/etc/rc.d/init.d $RPM_BUILD_ROOT/etc/sysconfig
 install -d -m755 $RPM_BUILD_ROOT/%{_unitdir}
 install -m644 -p %{SOURCE5} $RPM_BUILD_ROOT/%{_unitdir}/saslauthd.service
 install -m644 -p %{SOURCE9} $RPM_BUILD_ROOT/etc/sysconfig/saslauthd
+install -m755 -d $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d
+install -m644 -p %{SOURCE11} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/saslauthd.conf
 
 # Install the config dirs if they're not already there.
 install -m755 -d $RPM_BUILD_ROOT/%{_sysconfdir}/sasl2
@@ -354,7 +332,7 @@ test "$RPM_BUILD_ROOT" != "/" && rm -rf $RPM_BUILD_ROOT
 
 %pre
 getent group %{username} >/dev/null || groupadd -g 76 -r %{username}
-getent passwd %{username} >/dev/null || useradd -r -g %{username} -d %{homedir} -s /sbin/nologin -c "%{hint}" %{username}
+getent passwd %{username} >/dev/null || useradd -r -g %{username} -d %{homedir} -s /sbin/nologin -c \"%{hint}\" %{username}
 
 %post
 %systemd_post saslauthd.service
@@ -382,7 +360,8 @@ getent passwd %{username} >/dev/null || useradd -r -g %{username} -d %{homedir} 
 %{_sbindir}/testsaslauthd
 %config(noreplace) /etc/sysconfig/saslauthd
 %{_unitdir}/saslauthd.service
-%ghost /run/saslauthd
+%{_prefix}/lib/tmpfiles.d/saslauthd.conf
+%dir /run/saslauthd
 
 %files lib
 %defattr(-,root,root)
@@ -443,30 +422,6 @@ getent passwd %{username} >/dev/null || useradd -r -g %{username} -d %{homedir} 
 %{_sbindir}/sasl2-shared-mechlist
 
 %changelog
-* Wed Nov 22 2017 Jakub Jelen <jjelen@redhat.com> - 2.1.26-23
-- Avoid undefined symbols on s390x (#1516193)
-
-* Thu Sep 21 2017 Jakub Jelen <jjelen@redhat.com> - 2.1.26-22
-- Allow cyrus sasl to get the ssf from gssapi (#1431586)
-
-* Mon Mar 06 2017 Jakub Jelen <jjelen@redhat.com> - 2.1.26-21
-- support proper SASL GSS-SPNEGO (#1421663)
-
-* Fri Dec 04 2015 Jakub Jelen <jjelen@redhat.com> 2.1.26-20
-- GSSAPI: Use per-connection mutex where possible (#1263017)
-
-* Thu Jul 16 2015 Jakub Jelen <jjelen@redhat.com> 2.1.26-19.2
-- Revert tmpfiles.d and use new systemd feature RuntimeDirectory (#1188065)
-
-* Wed May 20 2015 Jakub Jelen <jjelen@redhat.com> 2.1.26-18
-- Revert updated GSSAPI flags as in RFC 4752 to restore backward compatibility (#1154566)
-- Add and document ability to run saslauth as non-root user (#1188065)
-- Support AIX SASL GSSAPI (#1174322)
-- Update client library to be thread safe (#1147659)
-- Fix problem, that parsing short prefix matches the whole mechanism name (#1089267)
-- Don't use unnecessary quotes around user description (#1082564)
-- Fix confusing message when config file has typo (#1022479)
-
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 2.1.26-17
 - Mass rebuild 2014-01-24
 
