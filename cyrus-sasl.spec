@@ -1,5 +1,5 @@
 %define username	saslauth
-%define hint		"Saslauthd user"
+%define hint		Saslauthd user
 %define homedir		%{_var}/empty/%{username}
 
 %define _plugindir2 %{_libdir}/sasl2
@@ -8,7 +8,7 @@
 Summary: The Cyrus SASL library
 Name: cyrus-sasl
 Version: 2.1.23
-Release: 13%{?dist}.1
+Release: 15%{?dist}
 License: BSD
 Group: System Environment/Libraries
 # Source0 originally comes from ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/;
@@ -42,6 +42,10 @@ Patch38: cyrus-sasl-2.1.23-aliasing.patch
 Patch39: cyrus-sasl-2.1.23-ntlm.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=825863
 Patch40: cyrus-sasl-2.1.23-release-server_creds.patch
+# back the ad_compat option (#994242)
+Patch41: cyrus-sasl-2.1.23-ad_compat.patch
+# Fixed a memory leak in the client side DIGEST-MD5 code (#838628)
+Patch42: cyrus-sasl-2.1.23-md5-leak.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, automake, libtool, gdbm-devel, groff
@@ -164,6 +168,8 @@ chmod -x include/*.h
 %patch38 -p1 -b .aliasing
 %patch39 -p1 -b .ntlm
 %patch40 -p1 -b .release-server_creds
+%patch41 -p1 -b .ad_compat
+%patch42 -p1 -b .md5-leak
 
 # FIXME - we remove these files directly so that we can avoid using the -f
 # flag, which has a nasty habit of overwriting files like COPYING.
@@ -321,7 +327,7 @@ test "$RPM_BUILD_ROOT" != "/" && rm -rf $RPM_BUILD_ROOT
 getent group %{username} >/dev/null || groupadd -g 76 -r %{username}
 getent passwd %{username} >/dev/null || \
 useradd -r -g %{username} -d %{homedir} -s /sbin/nologin \
--c \"%{hint}\" %{username}
+-c "%{hint}" %{username}
 exit 0
 
 %post
@@ -406,7 +412,12 @@ exit 0
 %{_sbindir}/sasl2-shared-mechlist
 
 %changelog
-* Tue Nov 20 2012 Petr Lautrbach <plautrba@redhat.com> - 2.1.23-13.el6_3.1
+* Mon Jun 23 2014 Petr Lautrbach <plautrba@redhat.com> 2.1.23-15
+- don't use " for saslauth user's description (#1081445)
+- backport the ad_compat option (#994242)
+- fixed a memory leak in the client side DIGEST-MD5 code (#838628)
+
+* Mon Nov 19 2012 Petr Lautrbach <plautrba@redhat.com> 2.1.23-14
 - release the GSSAPI server credential handle immediately after the
   GSSAPI security context is established (#825863)
 
