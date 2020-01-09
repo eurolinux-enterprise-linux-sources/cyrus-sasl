@@ -8,7 +8,7 @@
 Summary: The Cyrus SASL library
 Name: cyrus-sasl
 Version: 2.1.23
-Release: 15%{?dist}.1
+Release: 15%{?dist}.2
 License: BSD
 Group: System Environment/Libraries
 # Source0 originally comes from ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/;
@@ -48,6 +48,8 @@ Patch41: cyrus-sasl-2.1.23-ad_compat.patch
 Patch42: cyrus-sasl-2.1.23-md5-leak.patch
 # check context value in sasl_gss_encode() (#1087221)
 Patch43: cyrus-sasl-2.1.23-check-context-in-sasl_gss_encode.patch
+# Support non-confidentiality/non-integrity requests from AIX SASL GSSAPI implementation (#1174315)
+Patch44: cyrus-sasl-2.1.23-gssapi-non-encrypt.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, automake, libtool, gdbm-devel, groff
@@ -173,6 +175,7 @@ chmod -x include/*.h
 %patch41 -p1 -b .ad_compat
 %patch42 -p1 -b .md5-leak
 %patch43 -p1 -b .sasl_gss_encode
+%patch44 -p1 -b .gssapi_non_encrypt
 
 # FIXME - we remove these files directly so that we can avoid using the -f
 # flag, which has a nasty habit of overwriting files like COPYING.
@@ -415,6 +418,9 @@ exit 0
 %{_sbindir}/sasl2-shared-mechlist
 
 %changelog
+* Fri Feb 27 2015 Jakub Jelen <jjelen@redhat.com> 2.1.23-15.2
+- Support AIX SASL GSSAPI (#1174315)
+
 * Tue Nov 18 2014 Petr Lautrbach <plautrba@redhat.com> 2.1.23-15.1
 - check a context value in sasl_gss_encode() (#1087221)
 
