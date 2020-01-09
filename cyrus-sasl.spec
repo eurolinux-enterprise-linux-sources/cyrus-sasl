@@ -10,7 +10,7 @@
 Summary: The Cyrus SASL library
 Name: cyrus-sasl
 Version: 2.1.26
-Release: 19.2%{?dist}
+Release: 20%{?dist}
 License: BSD with advertising
 Group: System Environment/Libraries
 # Source0 originally comes from ftp://ftp.andrew.cmu.edu/pub/cyrus-mail/;
@@ -62,6 +62,8 @@ Patch55: cyrus-sasl-2.1.26-make-client-thread-sage.patch
 Patch56: cyrus-sasl-2.1.26-handle-single-character-mechanisms.patch
 # Fix confusing message when config file has typo (#1022479)
 Patch57: cyrus-sasl-2.1.26-error-message-when-config-has-typo.patch
+# GSSAPI: Use per-connection mutex where possible (#1263017)
+Patch58: cyrus-sasl-2.1.26-gssapi-use-per-connection-mutex.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf, automake, libtool, gdbm-devel, groff
@@ -211,6 +213,7 @@ chmod -x include/*.h
 %patch55 -p1 -b .threads
 %patch56 -p1 -b .prefix
 %patch57 -p1 -b .typo
+%patch58 -p1 -b .mutex
 
 
 %build
@@ -434,6 +437,9 @@ getent passwd %{username} >/dev/null || useradd -r -g %{username} -d %{homedir} 
 %{_sbindir}/sasl2-shared-mechlist
 
 %changelog
+* Fri Dec 04 2015 Jakub Jelen <jjelen@redhat.com> 2.1.26-20
+- GSSAPI: Use per-connection mutex where possible (#1263017)
+
 * Thu Jul 16 2015 Jakub Jelen <jjelen@redhat.com> 2.1.26-19.2
 - Revert tmpfiles.d and use new systemd feature RuntimeDirectory (#1188065)
 
